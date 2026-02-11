@@ -36,6 +36,11 @@ yarn-error.log*
 # firebase - contains sensitive API keys
 /firebase
 
+# Large image files - exclude all PNGs
+*.png
+public/*.png
+public/covers/*.png
+
 # vercel
 .vercel
 
