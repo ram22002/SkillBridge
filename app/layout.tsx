@@ -23,7 +23,10 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" className="dark">
-        <body className={`${monaSans.className} antialiased pattern`}>
+        <body
+          className={`${monaSans.className} antialiased pattern`}
+          cz-shortcut-listen="true"
+        >
           {children}
 
           <Toaster />
@@ -31,6 +34,4 @@ export default function RootLayout({
       </html>
     </ClerkProvider>
   );
-
 }
-

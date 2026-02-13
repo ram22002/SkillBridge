@@ -21,6 +21,8 @@ interface SavedMessage {
   content: string;
 }
 
+import { generateInterviewFromTranscript } from "@/lib/actions/generate.action";
+
 const Agent = ({
   userName,
   userId,
@@ -34,12 +36,13 @@ const Agent = ({
   const [messages, setMessages] = useState<SavedMessage[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastMessage, setLastMessage] = useState<string>("");
+  const [isGeneratingFeedback, setIsGeneratingFeedback] = useState(false);
 
   useEffect(() => {
     console.log("Agent component mounted");
     if (!vapi) {
-        console.error("Vapi instance is null");
-        return;
+      console.error("Vapi instance is null");
+      return;
     }
 
     const onCallStart = () => {
@@ -68,7 +71,15 @@ const Agent = ({
     };
 
     const onError = (error: Error) => {
-      console.log("Error:", error);
+      // Ignore "Meeting has ended" errors as they are expected when ending a call
+      if (
+        error.message?.includes("Meeting has ended") ||
+        error.message?.includes("ejection")
+      ) {
+        console.log("Call ended normally (suppressed error log)");
+        return;
+      }
+      console.error("Error:", error);
     };
 
     vapi.on("call-start", onCallStart);
@@ -95,27 +106,60 @@ const Agent = ({
 
     const handleGenerateFeedback = async (messages: SavedMessage[]) => {
       console.log("handleGenerateFeedback");
+      setIsGeneratingFeedback(true);
 
-      const { success, feedbackId: id } = await createFeedback({
-        interviewId: interviewId!,
-        userId: userId!,
-        transcript: messages,
-        feedbackId,
-      });
+      try {
+        const { success, feedbackId: id } = await createFeedback({
+          interviewId: interviewId!,
+          userId: userId!,
+          transcript: messages,
+          feedbackId,
+        });
 
-      if (success && id) {
-        router.push(`/interview/${interviewId}/feedback`);
-      } else {
-        console.log("Error saving feedback");
+        if (success && id) {
+          router.push(`/interview/${interviewId}/feedback`);
+        } else {
+          console.log("Error saving feedback");
+          router.push("/");
+        }
+      } catch (error) {
+        console.error("Error generating feedback:", error);
         router.push("/");
+      } finally {
+        setIsGeneratingFeedback(false);
+      }
+    };
+
+    const handleGenerateInterview = async (messages: SavedMessage[]) => {
+      console.log("handleGenerateInterview");
+      setIsGeneratingFeedback(true);
+
+      try {
+        const { success, interviewId: id } =
+          await generateInterviewFromTranscript({
+            userId: userId!,
+            transcript: messages,
+          });
+
+        if (success && id) {
+          console.log("Interview generated successfully");
+          router.push("/");
+        } else {
+          console.error("Error generating interview");
+          // Fallback redirect
+          router.push("/");
+        }
+      } catch (error) {
+        console.error("Error generating interview:", error);
+        router.push("/");
+      } finally {
+        setIsGeneratingFeedback(false);
       }
     };
 
     if (callStatus === CallStatus.FINISHED) {
       if (type === "generate") {
-        // Don't automatically redirect - let user stay on interview page
-        console.log("Interview call ended. User can manually navigate away.");
-        // router.push("/");
+        handleGenerateInterview(messages);
       } else {
         handleGenerateFeedback(messages);
       }
@@ -132,9 +176,9 @@ const Agent = ({
       console.log("Microphone permission granted.");
 
       if (type === "generate") {
-        console.log("Starting Vapi call (Generate) with Workflow ID:", process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID);
-        vapi.stop(); 
-        
+        // console.log("Starting Vapi call (Generate) with Workflow ID:", process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID);
+        vapi.stop();
+
         await vapi.start(
           {
             model: {
@@ -158,7 +202,7 @@ const Agent = ({
             .join("\n");
         }
 
-        console.log("Starting Vapi call (Attributes) with Workflow ID:", process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID);
+        // console.log("Starting Vapi call (Attributes) with Workflow ID:", process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID);
         vapi.stop();
         await vapi.start(
           {
@@ -178,7 +222,10 @@ const Agent = ({
     } catch (err: any) {
       console.error("Failed to start Vapi call:", err);
       console.error("Error message:", err.message);
-      console.error("Error details:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
+      console.error(
+        "Error details:",
+        JSON.stringify(err, Object.getOwnPropertyNames(err), 2)
+      );
       setCallStatus(CallStatus.INACTIVE);
     }
   };
@@ -239,7 +286,11 @@ const Agent = ({
 
       <div className="w-full flex justify-center">
         {callStatus !== "ACTIVE" ? (
-          <button className="relative btn-call" onClick={() => handleCall()}>
+          <button
+            className="relative btn-call"
+            onClick={() => handleCall()}
+            disabled={isGeneratingFeedback || callStatus === "CONNECTING"}
+          >
             <span
               className={cn(
                 "absolute animate-ping rounded-full opacity-75",
@@ -248,9 +299,15 @@ const Agent = ({
             />
 
             <span className="relative">
-              {callStatus === "INACTIVE" || callStatus === "FINISHED"
-                ? "Call"
-                : ". . ."}
+              {isGeneratingFeedback
+                ? type === "generate"
+                  ? "Creating Interview..."
+                  : "Generating Feedback..."
+                : callStatus === "CONNECTING"
+                  ? "Connecting..."
+                  : callStatus === "INACTIVE" || callStatus === "FINISHED"
+                    ? "Call"
+                    : ". . ."}
             </span>
           </button>
         ) : (
