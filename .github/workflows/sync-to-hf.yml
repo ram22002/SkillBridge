@@ -1,29 +1,29 @@
-name: Sync to Hugging Face Space
+# name: Sync to Hugging Face Space
 
-on:
-  push:
-    branches:
-      - main
+# on:
+#   push:
+#     branches:
+#       - main
 
-jobs:
-  sync:
-    runs-on: ubuntu-latest
+# jobs:
+#   sync:
+#     runs-on: ubuntu-latest
     
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # Full history needed for HF
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v3
+#         with:
+#           fetch-depth: 0  # Full history needed for HF
 
-      - name: Push to Hugging Face Space
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
+#       - name: Push to Hugging Face Space
+#         env:
+#           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+#         run: |
+#           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+#           git config --global user.name "github-actions[bot]"
           
-          # Add Hugging Face remote
-          git remote add hf https://Ramregar97:$HF_TOKEN@huggingface.co/spaces/Ramregar97/SkillBridge || true
+#           # Add Hugging Face remote
+#           git remote add hf https://Ramregar97:$HF_TOKEN@huggingface.co/spaces/Ramregar97/SkillBridge || true
           
-          # Push to Hugging Face Space (force for initial deployment)
-          git push hf main --force
+#           # Push to Hugging Face Space (force for initial deployment)
+#           git push hf main --force
