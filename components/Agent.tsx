@@ -123,9 +123,8 @@ const Agent = ({
 
     if (callStatus === CallStatus.FINISHED) {
       if (type === "generate") {
-        // Don't automatically redirect - let user stay on interview page
-        console.log("Interview call ended. User can manually navigate away.");
-        // router.push("/");
+        console.log("Interview generation call ended. Redirecting to dashboard...");
+        router.push("/");
       } else {
         handleGenerateFeedback(messages);
       }
@@ -290,7 +289,7 @@ const Agent = ({
         </div>
       )}
 
-      <div className="w-full flex justify-center">
+      <div className="w-full flex justify-center items-center">
         {callStatus !== "ACTIVE" ? (
           <button className="relative btn-call" onClick={() => handleCall()}>
             <span
@@ -310,6 +309,16 @@ const Agent = ({
           <button className="btn-disconnect" onClick={() => handleDisconnect()}>
             End
           </button>
+        )}
+
+        {/* Failsafe Redirect Button for Generation Mode */}
+        {type === "generate" && (
+           <button 
+             className="btn-secondary ml-4" 
+             onClick={() => router.push("/")}
+           >
+             Continue to Dashboard
+           </button>
         )}
       </div>
     </>
