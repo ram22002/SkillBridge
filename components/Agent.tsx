@@ -47,6 +47,7 @@ const Agent = ({
     };
 
     const onCallEnd = () => {
+      console.log("Call ended");
       setCallStatus(CallStatus.FINISHED);
     };
 
@@ -67,8 +68,17 @@ const Agent = ({
       setIsSpeaking(false);
     };
 
-    const onError = (error: Error) => {
-      console.log("Error:", error);
+    const onError = (error: any) => {
+      // Ignore "Meeting has ended" errors if we're already finished or it's just a disconnect
+      if (error?.errorMsg === "Meeting has ended" || error?.error?.msg === "Meeting has ended") {
+        console.log("Meeting ended gracefully (ignored error)");
+        return;
+      }
+
+      console.error("Vapi Error:", error);
+      if (error && typeof error === 'object') {
+        console.error("Error details:", JSON.stringify(error, null, 2));
+      }
     };
 
     vapi.on("call-start", onCallStart);
@@ -128,6 +138,15 @@ const Agent = ({
     try {
       // Request microphone permission explicitly
       console.log("Requesting microphone permission...");
+      
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert(
+          "Microphone access blocked. Browsers only allow microphone access on localhost or HTTPS.\n\n" +
+          "If you are on a phone/different device, please use Ngrok to get an HTTPS URL."
+        );
+        throw new Error("navigator.mediaDevices is undefined (Insecure Context)");
+      }
+
       await navigator.mediaDevices.getUserMedia({ audio: true });
       console.log("Microphone permission granted.");
 
@@ -159,21 +178,29 @@ const Agent = ({
         }
 
         console.log("Starting Vapi call (Attributes) with Workflow ID:", process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID);
-        vapi.stop();
-        await vapi.start(
-          {
-            model: {
-              provider: "vapi",
-              model: "gpt-4",
-              workflowId: process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!,
-            },
-          },
-          {
-            variableValues: {
+        
+        // Inject the specific interview instructions
+        const systemMessage = interviewer?.model?.messages?.[0]?.content || "You are an interviewer.";
+        
+        const assistantOverrides = {
+           model: {
+             provider: "openai" as const,
+             model: "gpt-4",
+             messages: [
+               {
+                 role: "system",
+                 content: systemMessage.replace("{{questions}}", formattedQuestions),
+               },
+             ],
+           },
+           variableValues: {
               questions: formattedQuestions,
-            },
-          }
-        );
+           },
+        };
+
+        vapi.stop();
+        // @ts-ignore - Vapi types are strict, but this override structure is correct for the API
+        await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, assistantOverrides);
       }
     } catch (err: any) {
       console.error("Failed to start Vapi call:", err);
