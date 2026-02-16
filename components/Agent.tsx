@@ -182,7 +182,10 @@ const Agent = ({
         // Inject the specific interview instructions
         const systemMessage = interviewer?.model?.messages?.[0]?.content || "You are an interviewer.";
         
-        const assistantOverrides = {
+        // Create a transient assistant config by merging the constant with the questions
+        // This bypasses the remote Workflow entirely, ensuring we use our specific Prompt/Model.
+        const interviewAssistant = {
+           ...interviewer,
            model: {
              provider: "openai" as const,
              model: "gpt-4",
@@ -193,14 +196,11 @@ const Agent = ({
                },
              ],
            },
-           variableValues: {
-              questions: formattedQuestions,
-           },
         };
 
         vapi.stop();
-        // @ts-ignore - Vapi types are strict, but this override structure is correct for the API
-        await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, assistantOverrides);
+        // @ts-ignore - Explicitly casting this to any or ignoring because Vapi SDK types can be tricky with transient assistants
+        await vapi.start(interviewAssistant);
       }
     } catch (err: any) {
       console.error("Failed to start Vapi call:", err);
