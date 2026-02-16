@@ -165,6 +165,7 @@ const Agent = ({
             variableValues: {
               username: userName || "Guest",
               userid: userId || "anonymous",
+              userId: userId || "anonymous",
             },
           }
         );

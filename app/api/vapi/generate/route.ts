@@ -21,8 +21,16 @@ export async function POST(request: Request) {
     console.log("Connected to MongoDB");
 
     if (!role || !level || !techstack || !amount || !userid) {
-       console.error("Missing required fields in request:", { role, level, techstack, amount, userid });
        return Response.json({ success: false, error: "Missing required fields" }, { status: 400 });
+    }
+
+    if (userid.startsWith("user_")) {
+        console.log("Valid Clerk User ID detected:", userid);
+    }
+
+    if (userid.includes("{{") || userid.includes("}}")) {
+        console.error("Invalid userid format (template tag detected):", userid);
+        return Response.json({ success: false, error: "Invalid userid format" }, { status: 400 });
     }
 
 
