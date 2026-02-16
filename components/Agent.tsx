@@ -184,23 +184,43 @@ const Agent = ({
         
         // Create a transient assistant config by merging the constant with the questions
         // This bypasses the remote Workflow entirely, ensuring we use our specific Prompt/Model.
+        console.log("Creating Transient Assistant with Questions:", formattedQuestions);
+        
         const interviewAssistant = {
-           ...interviewer,
+           name: "Interviewer",
+           firstMessage: "Hello! I'm ready to start your interview. I have your questions ready.",
+           transcriber: {
+             provider: "deepgram",
+             model: "nova-2",
+             language: "en",
+           },
+           voice: {
+             provider: "11labs",
+             voiceId: "sarah",
+           },
            model: {
              provider: "openai" as const,
              model: "gpt-4",
              messages: [
                {
                  role: "system",
-                 content: systemMessage.replace("{{questions}}", formattedQuestions),
+                 content: `You are a professional job interviewer. 
+                 ASK THESE SPECIFIC QUESTIONS ONE BY ONE:
+                 ${formattedQuestions}
+                 
+                 After each answer, ask a short follow-up or move to the next question.
+                 Do not ask about the role or level again. just start with the first question.`,
                },
              ],
            },
         };
 
+        console.log("Full Assistant Config being sent to Vapi:", JSON.stringify(interviewAssistant, null, 2));
+
         vapi.stop();
         // @ts-ignore - Explicitly casting this to any or ignoring because Vapi SDK types can be tricky with transient assistants
         await vapi.start(interviewAssistant);
+        console.log("Vapi.start() called successfully with transient assistant.");
       }
     } catch (err: any) {
       console.error("Failed to start Vapi call:", err);
@@ -218,6 +238,12 @@ const Agent = ({
   return (
     <>
       <div className="call-view">
+        {/* Debug Info */}
+        <div className="absolute top-4 left-4 text-xs text-gray-500 bg-gray-100 p-2 rounded opacity-50 hover:opacity-100 z-50">
+           Mode: {type} <br/>
+           Questions: {questions?.length || 0}
+        </div>
+
         {/* AI Interviewer Card */}
         <div className="card-interviewer">
           <div className="avatar">

@@ -7,10 +7,24 @@ import connectToDatabase from "@/lib/mongodb";
 import Interview from "@/lib/models/interview.model";
 
 export async function POST(request: Request) {
-  const { type, role, level, techstack, amount, userid } = await request.json();
+  const body = await request.json();
+  console.log("Received Vapi Webhook Request:", JSON.stringify(body, null, 2));
+  
+  // Extract fields from Vapi's tool call structure or direct body
+  // Vapi sends tool calls in a specific format, sometimes nested in 'message' or 'toolCall'
+  // But for a simple tool, it might be the body itself. 
+  // Let's assume the body IS the arguments for now, but logging helps confirm.
+  const { type, role, level, techstack, amount, userid } = body;
 
   try {
     await connectToDatabase();
+    console.log("Connected to MongoDB");
+
+    if (!role || !level || !techstack || !amount || !userid) {
+       console.error("Missing required fields in request:", { role, level, techstack, amount, userid });
+       return Response.json({ success: false, error: "Missing required fields" }, { status: 400 });
+    }
+
 
     let questions;
     try {
@@ -53,6 +67,7 @@ export async function POST(request: Request) {
     };
 
     const interview = await Interview.create(interviewData);
+    console.log("Interview created successfully:", interview._id.toString());
 
     return Response.json({ success: true, id: interview._id.toString() }, { status: 200 });
   } catch (error) {
