@@ -1,21 +1,19 @@
-import Image from "next/image";
 import { redirect } from "next/navigation";
+import { currentUser } from "@clerk/nextjs/server";
 
 import Agent from "@/components/Agent";
-import { getRandomInterviewCover } from "@/lib/utils";
+import DisplayTechIcons from "@/components/DisplayTechIcons";
 
+import { getRandomInterviewCover } from "@/lib/utils";
 import {
   getFeedbackByInterviewId,
   getInterviewById,
 } from "@/lib/actions/general.action";
-import { getCurrentUser } from "@/lib/actions/auth.action";
-import DisplayTechIcons from "@/components/DisplayTechIcons";
 
 const InterviewDetails = async ({ params }: RouteParams) => {
   const { id } = await params;
 
-  const user = await getCurrentUser();
-
+  const user = await currentUser();
   const interview = await getInterviewById(id);
   if (!interview) redirect("/");
 
@@ -29,7 +27,7 @@ const InterviewDetails = async ({ params }: RouteParams) => {
       <div className="flex flex-row gap-4 justify-between">
         <div className="flex flex-row gap-4 items-center max-sm:flex-col">
           <div className="flex flex-row gap-4 items-center">
-            <Image
+            <img
               src={getRandomInterviewCover()}
               alt="cover-image"
               width={40}
@@ -48,7 +46,8 @@ const InterviewDetails = async ({ params }: RouteParams) => {
       </div>
 
       <Agent
-        userName={user?.name!}
+        userName={user?.fullName!}
+        userImage={user?.imageUrl!}
         userId={user?.id}
         interviewId={id}
         type="interview"

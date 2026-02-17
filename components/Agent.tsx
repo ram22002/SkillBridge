@@ -28,6 +28,7 @@ const Agent = ({
   feedbackId,
   type,
   questions,
+  userImage,
 }: AgentProps) => {
   const router = useRouter();
   const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
@@ -38,8 +39,8 @@ const Agent = ({
   useEffect(() => {
     console.log("Agent component mounted");
     if (!vapi) {
-        console.error("Vapi instance is null");
-        return;
+      console.error("Vapi instance is null");
+      return;
     }
 
     const onCallStart = () => {
@@ -70,13 +71,16 @@ const Agent = ({
 
     const onError = (error: any) => {
       // Ignore "Meeting has ended" errors if we're already finished or it's just a disconnect
-      if (error?.errorMsg === "Meeting has ended" || error?.error?.msg === "Meeting has ended") {
+      if (
+        error?.errorMsg === "Meeting has ended" ||
+        error?.error?.msg === "Meeting has ended"
+      ) {
         console.log("Meeting ended gracefully (ignored error)");
         return;
       }
 
       console.error("Vapi Error:", error);
-      if (error && typeof error === 'object') {
+      if (error && typeof error === "object") {
         console.error("Error details:", JSON.stringify(error, null, 2));
       }
     };
@@ -123,7 +127,9 @@ const Agent = ({
 
     if (callStatus === CallStatus.FINISHED) {
       if (type === "generate") {
-        console.log("Interview generation call ended. Redirecting to dashboard...");
+        console.log(
+          "Interview generation call ended. Redirecting to dashboard..."
+        );
         router.push("/");
       } else {
         handleGenerateFeedback(messages);
@@ -137,22 +143,27 @@ const Agent = ({
     try {
       // Request microphone permission explicitly
       console.log("Requesting microphone permission...");
-      
+
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         alert(
           "Microphone access blocked. Browsers only allow microphone access on localhost or HTTPS.\n\n" +
-          "If you are on a phone/different device, please use Ngrok to get an HTTPS URL."
+            "If you are on a phone/different device, please use Ngrok to get an HTTPS URL."
         );
-        throw new Error("navigator.mediaDevices is undefined (Insecure Context)");
+        throw new Error(
+          "navigator.mediaDevices is undefined (Insecure Context)"
+        );
       }
 
       await navigator.mediaDevices.getUserMedia({ audio: true });
       console.log("Microphone permission granted.");
 
       if (type === "generate") {
-        console.log("Starting Vapi call (Generate) with Workflow ID:", process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID);
-        vapi.stop(); 
-        
+        console.log(
+          "Starting Vapi call (Generate) with Workflow ID:",
+          process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID
+        );
+        vapi.stop();
+
         await vapi.start(
           {
             model: {
@@ -177,55 +188,67 @@ const Agent = ({
             .join("\n");
         }
 
-        console.log("Starting Vapi call (Attributes) with Workflow ID:", process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID);
-        
-        // Inject the specific interview instructions
-        const systemMessage = interviewer?.model?.messages?.[0]?.content || "You are an interviewer.";
-        
+        console.log(
+          "Starting Vapi call (Attributes) with Workflow ID:",
+          process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID
+        );
+
         // Create a transient assistant config by merging the constant with the questions
         // This bypasses the remote Workflow entirely, ensuring we use our specific Prompt/Model.
-        console.log("Creating Transient Assistant with Questions:", formattedQuestions);
-        
+        console.log(
+          "Creating Transient Assistant with Questions:",
+          formattedQuestions
+        );
+
         const interviewAssistant = {
-           name: "Interviewer",
-           firstMessage: "Hello! I'm ready to start your interview. I have your questions ready.",
-           transcriber: {
-             provider: "deepgram",
-             model: "nova-2",
-             language: "en",
-           },
-           voice: {
-             provider: "11labs",
-             voiceId: "sarah",
-           },
-           model: {
-             provider: "openai" as const,
-             model: "gpt-4",
-             messages: [
-               {
-                 role: "system",
-                 content: `You are a professional job interviewer. 
+          name: "Interviewer",
+          firstMessage:
+            "Hello! I'm ready to start your interview. I have your questions ready.",
+          transcriber: {
+            provider: "deepgram",
+            model: "nova-2",
+            language: "en",
+          },
+          voice: {
+            provider: "11labs",
+            voiceId: "sarah",
+          },
+          model: {
+            provider: "openai" as const,
+            model: "gpt-4",
+            messages: [
+              {
+                role: "system",
+                content: `You are a professional job interviewer. 
                  ASK THESE SPECIFIC QUESTIONS ONE BY ONE:
                  ${formattedQuestions}
                  
                  After each answer, ask a short follow-up or move to the next question.
                  Do not ask about the role or level again. just start with the first question.`,
-               },
-             ],
-           },
+              },
+            ],
+          },
         };
 
-        console.log("Full Assistant Config being sent to Vapi:", JSON.stringify(interviewAssistant, null, 2));
+        console.log(
+          "Full Assistant Config being sent to Vapi:",
+          JSON.stringify(interviewAssistant, null, 2)
+        );
 
         vapi.stop();
         // @ts-ignore - Explicitly casting this to any or ignoring because Vapi SDK types can be tricky with transient assistants
         await vapi.start(interviewAssistant);
-        console.log("Vapi.start() called successfully with transient assistant.");
+        console.log(
+          "Vapi.start() called successfully with transient assistant."
+        );
       }
     } catch (err: any) {
       console.error("Failed to start Vapi call:", err);
       console.error("Error message:", err.message);
-      console.error("Error details:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
+      console.error(
+        "Error details:",
+        JSON.stringify(err, Object.getOwnPropertyNames(err), 2)
+      );
       setCallStatus(CallStatus.INACTIVE);
     }
   };
@@ -240,8 +263,8 @@ const Agent = ({
       <div className="call-view">
         {/* Debug Info */}
         <div className="absolute top-4 left-4 text-xs text-gray-500 bg-gray-100 p-2 rounded opacity-50 hover:opacity-100 z-50">
-           Mode: {type} <br/>
-           Questions: {questions?.length || 0}
+          Mode: {type} <br />
+          Questions: {questions?.length || 0}
         </div>
 
         {/* AI Interviewer Card */}
@@ -262,8 +285,8 @@ const Agent = ({
         {/* User Profile Card */}
         <div className="card-border">
           <div className="card-content">
-            <Image
-              src="/user-avatar.png"
+            <img
+              src={userImage}
               alt="profile-image"
               width={539}
               height={539}
@@ -314,12 +337,12 @@ const Agent = ({
 
         {/* Failsafe Redirect Button for Generation Mode */}
         {type === "generate" && (
-           <button 
-             className="btn-secondary ml-4" 
-             onClick={() => router.push("/")}
-           >
-             Continue to Dashboard
-           </button>
+          <button
+            className="btn-secondary ml-4"
+            onClick={() => router.push("/")}
+          >
+            Continue to Dashboard
+          </button>
         )}
       </div>
     </>

@@ -55,6 +55,7 @@ interface AgentProps {
   type: "generate" | "interview";
   questions?: string[];
   profileImage?: string;
+  userImage?: string;
 }
 
 interface RouteParams {
